@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
   TextField,
@@ -33,25 +33,39 @@ const ChatInterface = () => {
     setLoading(true);
 
     try {
-      // TODO: Make API call to /api/chat endpoint
-      // You will need to:
-      // 1. Use fetch or axios to POST to 'http://localhost:3001/api/chat'
-      // 2. Send the user's message in the request body: { message: input }
-      // 3. Handle the response from the backend
-      // 4. Create a bot message with the response
-      // 5. Add the bot message to the messages state
+      // Call the backend chat endpoint
+      const resp = await fetch('http://localhost:3001/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage.text }),
+      });
 
-      // Placeholder: Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      if (!resp.ok) {
+        // Try to get error details from server
+        let errText = `Server returned ${resp.status}`;
+        try {
+          const errJson = await resp.json();
+          if (errJson?.error) errText = errJson.error;
+        } catch (e) {
+          // ignore JSON parse errors
+        }
+        throw new Error(errText);
+      }
+
+      const data = await resp.json();
+      // Backend returns { response: string } in the placeholder implementation
+      const botText = data?.response ?? data?.message ?? 'No response from server.';
 
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'This is a placeholder response. Implement API call here.',
+        text: botText,
         sender: 'bot',
         timestamp: new Date(),
       };
 
-      setMessages((prev) => [...prev, botMessage]);
+  setMessages((prev: Message[]) => [...prev, botMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage: Message = {
@@ -60,7 +74,7 @@ const ChatInterface = () => {
         sender: 'bot',
         timestamp: new Date(),
       };
-      setMessages((prev) => [...prev, errorMessage]);
+  setMessages((prev: Message[]) => [...prev, errorMessage]);
     } finally {
       setLoading(false);
     }
@@ -93,7 +107,7 @@ const ChatInterface = () => {
           </Box>
         ) : (
           <List>
-            {messages.map((message) => (
+            {messages.map((message: Message) => (
               <ListItem
                 key={message.id}
                 sx={{
@@ -134,7 +148,7 @@ const ChatInterface = () => {
           variant="outlined"
           placeholder="Type your message..."
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
           disabled={loading}
         />
