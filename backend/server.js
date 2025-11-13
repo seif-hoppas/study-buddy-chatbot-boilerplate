@@ -1,7 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // Load environment variables from .env file
 dotenv.config();
 
@@ -27,28 +28,43 @@ app.post('/api/chat', async (req, res) => {
       return res.status(400).json({ error: 'Message is required and must be a string' });
     }
 
-    // TODO: Get Gemini API key from environment variable
-    // const apiKey = process.env.GEMINI_API_KEY;
+    // Get Gemini API key from environment variable
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.error('GEMINI_API_KEY is not set. Make sure .env contains GEMINI_API_KEY.');
+      return res.status(500).json({ error: 'Server configuration error: missing API key' });
+    }
 
-    // TODO: Make API call to Gemini
-    // You will need to:
-    // 1. Import the necessary Gemini SDK (e.g., @google/generative-ai)
-    // 2. Initialize the GoogleGenerativeAI client with your API key
-    // 3. Get a model instance (recommended: 'gemini-2.5-flash')
-    // 4. Construct a prompt with the user's message
-    // 5. Call generateContent() with the prompt
-    // 6. Extract the response text from the result
-    // 7. Handle any errors that may occur
+    console.info('Preparing to send message to Gemini API');
 
-    // TODO: Return the chatbot response
-    // For now, return a placeholder response
-    const placeholderResponse = {
-      response: response.text};
+    // Initialize the Google Generative AI client
+    const genAI = new GoogleGenerativeAI(apiKey);
+    
+    // Get the model instance
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    res.json(placeholderResponse);
+    // Generate content with the user's message
+    const result = await model.generateContent(message);
+    const response = result.response;
+    const responseText = response.text();
+
+    console.log('AI response received');
+
+    // Return the chatbot response
+    res.json({ response: responseText });
+    
   } catch (error) {
     console.error('Error in chat endpoint:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    
+    // Provide more specific error messages
+    if (error.message?.includes('API key')) {
+      return res.status(401).json({ error: 'Invalid API key' });
+    }
+    
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 
